@@ -1,0 +1,251 @@
+📄 Complete & Simple Documentation: BIP Report → OIC → FTP (Real-Time Project Flow)
+1️⃣ Create the BIP Report (Oracle BI Publisher)
+
+Go to BI Publisher / Reports.
+
+Create a new report.
+
+Attach your data model.
+
+Under the report output formats, ensure default output is CSV.
+
+This is important because OIC must receive the report in CSV.
+
+Note down the Report Absolute Path
+Example:
+
+/Custom/Finance/InvoiceReport.xdo
+
+2️⃣ Create Required Connections in OIC
+A. SOAP Connection (for calling BIP Report)
+
+Name: ERP_SOAP_RunReport
+
+Enter WSDL URL for the ReportService:
+
+https://<yourERP>/xmlpserver/services/ReportService?wsdl
+
+
+Enter username & password of ERP user with BI access.
+
+Test and save connection.
+
+B. FTP Connection (for uploading file)
+
+Name: FTP_Write
+
+Provide:
+
+Host / IP Address
+
+Port: 22
+
+SFTP Enabled: Yes
+
+Username / Password
+
+Test and save connection.
+
+3️⃣ Build the Integration in OIC
+Step 1: Create Scheduled Integration
+
+Choose Scheduled type.
+
+Provide integration name (Example: Send_Invoice_CSV_to_FTP).
+
+4️⃣ Add SOAP Invoke – RunReport
+
+Drag the SOAP connection into the integration.
+
+Name it → Run_BIP_Report
+
+Select Operation: runReport
+
+Finish.
+
+Mapping for RunReport
+
+In the mapper:
+
+reportAbsolutePath
+→ Enter the absolute path of your report
+Example:
+
+/Custom/Finance/InvoiceReport.xdo
+
+
+sizeOfDataChunkDownload
+→ Enter:
+
+-1
+
+
+(Meaning: download complete file in one shot)
+
+reportParameters
+→ If any parameter needed, map it.
+
+Click Validate → Close Mapper.
+
+5️⃣ Add Stage File to Store Report Data (Temporary Storage)
+
+Add Stage File after SOAP invoke.
+
+Select Operation: Write File
+
+File Name:
+
+invoice.csv
+
+
+Output Directory:
+
+/home/user1/oic_files
+
+Should You Provide File Structure?
+**👉 If you know CSV structure → create CSV schema.
+
+👉 If you do NOT know CSV structure (common in real projects) → use opaque schema.**
+
+Using Opaque Schema (Most Common Real-Time Method)
+
+When OIC asks:
+
+Do you want to specify structure of the contents of the file?
+
+Choose: Yes
+
+Then Select:
+
+XML Schema Document
+
+Click "Drag & Drop" → Choose standard Opaque schema:
+
+Use this schema:
+
+<?xml version='1.0' encoding='UTF-8'?>
+<schema targetNamespace="http://xmlns.oracle.com/pcbpel/adapter/opaque/"
+        xmlns="http://www.w3.org/2001/XMLSchema">
+    <element name="opaqueElement" type="base64Binary" />
+</schema>
+
+
+Finish.
+
+Mapping Stage File (Very Important)
+
+In the mapper:
+
+Source (SOAP Response) →
+
+runReportResponse → runReportReturn → reportBytes
+
+
+Target →
+
+opaqueElement
+
+
+This means:
+You are writing raw bytes (CSV file as base64) to stage.
+
+6️⃣ Add FTP Invoke (Upload to SFTP Server)
+
+Add FTP connection after Stage File.
+
+Name: Write_To_FTP
+
+Operation: Write File
+
+Transfer Mode: Binary (very important for raw bytes)
+
+Directory:
+
+/outbound/invoice/
+
+
+File Name Pattern:
+
+oracle%sequence%.csv
+
+Specify File Structure?
+
+Choose: NO
+Because the stage file already contains raw bytes.
+
+Finish.
+
+7️⃣ FTP Mapping
+
+In this mapper, you map:
+
+A. FileReference
+
+Source:
+
+StageFile → Write File → ICSFile → FileReference
+
+
+Target:
+
+FTP → WriteFile → ICSFile → FileReference
+
+
+This means:
+The temporary file created by Stage File is sent to FTP.
+
+B. File Name
+
+Source (from StageFile output):
+
+filename
+
+
+Target:
+
+outboundFTPHeaderType → FileName
+
+C. Directory
+
+Target:
+
+outboundFTPHeaderType → Directory
+
+
+Manually enter:
+
+/outbound/invoice/
+
+8️⃣ Validate → Save → Activate Integration
+
+Click Validate
+
+Click Save
+
+Click Activate
+
+Run integration → Monitor instance.
+
+9️⃣ Check Output in WinSCP
+
+Open WinSCP
+
+Connect to your SFTP server
+
+Navigate to:
+
+/outbound/invoice/
+
+
+You will see file:
+
+oracle1.csv
+oracle2.csv
+oracle3.csv
+
+
+(Because of sequence number)
+
+🎉 Final Summary (One Line):
+
+OIC calls BIP via SOAP → extracts report bytes → writes raw bytes into Stage File (opaque schema) → pushes same file into FTP in binary mode → final CSV appears in WinSCP.
