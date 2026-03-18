@@ -1,0 +1,108 @@
+Objective:
+
+Accept user input (Name, Email)
+
+Check if email is provided
+
+Send email notification if email exists
+
+Log messages for tracking
+
+Return response to client
+
+🔷 2. Integration Flow Overview
+🧩 Flow Structure:
+Trigger → Switch
+            ├── IF (Email exists)
+            │       → Logger
+            │       → Assign
+            │       → Notification (Send Email)
+            │       → Map (Response)
+            │
+            └── OTHERWISE (No Email)
+                    → Logger
+                    → Map (Response)
+🔷 3. Components Explanation
+🔹 3.1 Trigger (REST Adapter)
+
+Entry point of the integration
+
+Accepts input from user/API
+
+📥 Sample Input:
+{
+  "name": "John",
+  "email": "abc@gmail.com"
+}
+🔹 3.2 Switch (Decision Logic)
+
+Used to apply conditional logic
+
+✔ Condition:
+If email is NOT empty → Route 1
+Else → Otherwise
+🔹 3.3 Route 1 (Email Exists)
+
+This path executes when email is provided.
+
+🪵 a) Logger
+
+Logs runtime message
+
+Helps in debugging
+
+Example Message:
+
+Email received, processing request
+🪵 b) Assign
+
+Stores values into variables
+
+Optional step
+
+Example Use:
+
+Store name/email for later use
+
+🪵 c) Notification (Send Email)
+
+Sends email to provided email ID
+
+Configuration:
+
+To: Email from input
+
+Subject: Hello from OIC
+
+Body:
+
+<html>
+  <body>
+    <p>Hello,</p>
+    <p>Welcome to Oracle Integration Cloud.</p>
+  </body>
+</html>
+🪵 d) Map (Response)
+
+Prepares response sent back to client
+
+Example Output:
+
+{
+  "message": "Email sent successfully"
+}
+🔹 3.4 Otherwise (No Email)
+
+Executed when email is empty or missing.
+
+🪵 a) Logger
+Email not provided
+🪵 b) Map (Response)
+{
+  "message": "No email provided"
+}
+🔷 4. Final Response
+
+Both branches return response to client
+
+Ensures API always sends output
